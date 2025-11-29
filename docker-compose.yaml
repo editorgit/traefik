@@ -5,6 +5,51 @@ services:
     image: traefik:v3.2
     restart: unless-stopped
 
+    command:
+      # Global
+      - "--global.checkNewVersion=true"
+      - "--global.sendAnonymousUsage=false"
+
+      # Entrypoints
+      - "--entrypoints.http.address=:80"
+      - "--entrypoints.http.http.redirections.entrypoint.to=https"
+      - "--entrypoints.http.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.http.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.https.address=:443"
+      - "--entrypoints.https.http.tls.certResolver=letsencrypt"
+      - "--entrypoints.https.http2.maxConcurrentStreams=250"
+      - "--entrypoints.https.http3"
+      - "--entrypoints.metrics.address=:8082"
+
+      # Certificate Resolvers
+      - "--certificatesresolvers.letsencrypt.acme.email=siplace@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http"
+
+      # Docker Provider
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.network=proxy"
+      - "--providers.docker.watch=true"
+
+      # Logging
+      - "--log.level=INFO"
+      - "--log.format=json"
+      - "--log.filePath=/var/log/traefik/traefik.log"
+      - "--accesslog.format=json"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--accesslog.filters.statuscodes=200,300-302,400-599"
+      - "--accesslog.fields.headers.names.User-Agent=keep"
+      - "--accesslog.fields.headers.names.X-Forwarded-For=keep"
+
+      # Metrics
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.entrypoint=metrics"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addRoutersLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+
     ports:
       - "80:80"       # HTTP
       - "443:443"     # HTTPS
@@ -14,17 +59,14 @@ services:
       - proxy
 
     volumes:
-      # Статическая конфигурация
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-
       # Docker socket для service discovery
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
       # Let's Encrypt хранилище
-      - ./acme:/acme
+      - traefik-acme:/acme
 
       # Логи
-      - ./logs:/var/log/traefik
+      - traefik-logs:/var/log/traefik
 
     environment:
       - TZ=Europe/Helsinki
@@ -45,6 +87,10 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+
+volumes:
+  traefik-acme:
+  traefik-logs:
 
 networks:
   proxy:

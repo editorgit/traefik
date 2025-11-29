@@ -22,9 +22,11 @@ docker swarm init
 # Создать overlay сеть для Traefik
 docker network create --driver overlay --attachable proxy
 
-# Задеплоить Traefik
+# Задеплоить Traefik (можно с локальной машины)
 docker stack deploy -c docker-compose.yaml traefik
 ```
+
+**Примечание:** Docker volumes (`traefik-acme`, `traefik-logs`) создаются автоматически при первом деплое. Traefik сам создаст `acme.json` с правильными правами при запуске.
 
 ### Проверка
 
@@ -43,16 +45,15 @@ docker ps | grep traefik
 
 ```
 traefik/
-├── docker-compose.yaml   # Основная конфигурация Docker Swarm
-├── traefik.yml           # Статическая конфигурация Traefik
-├── .env.example          # Пример переменных окружения
-├── README.md             # Эта инструкция
-├── acme/                 # Директория для Let's Encrypt (создается автоматически)
-│   └── acme.json        # Хранилище сертификатов
-└── logs/                 # Директория для логов (создается автоматически)
-    ├── traefik.log      # Основные логи
-    └── access.log       # Access логи
+├── docker-compose.yaml   # Вся конфигурация (включая настройки Traefik)
+└── README.md             # Эта инструкция
 ```
+
+**Docker Volumes:**
+- `traefik-acme` - Let's Encrypt сертификаты (acme.json)
+- `traefik-logs` - Логи Traefik (traefik.log, access.log)
+
+**Примечание:** Вся конфигурация Traefik находится в `docker-compose.yaml` в секции `command`. Отдельный файл `traefik.yml` не требуется.
 
 ## Конфигурация для приложений
 
@@ -143,15 +144,25 @@ docker stack deploy -c docker-compose.yaml traefik
 ### Просмотр логов
 
 ```bash
-# Все логи
+# Логи через Docker service
 docker service logs traefik_traefik -f
 
 # Только последние 100 строк
 docker service logs traefik_traefik --tail 100
 
-# Логи из файлов (JSON формат)
+# Логи из Docker volume (JSON формат)
 docker exec $(docker ps -q -f name=traefik) cat /var/log/traefik/traefik.log
 docker exec $(docker ps -q -f name=traefik) cat /var/log/traefik/access.log
+```
+
+### Доступ к сертификатам
+
+```bash
+# Просмотр acme.json
+docker run --rm -v traefik-acme:/acme alpine cat /acme/acme.json
+
+# Копировать acme.json на хост
+docker run --rm -v traefik-acme:/acme -v $(pwd):/backup alpine cp /acme/acme.json /backup/
 ```
 
 ## Безопасность
@@ -180,7 +191,10 @@ IP whitelist настраивается на уровне приложений �
 1. Проверьте что домен указывает на сервер: `dig your-domain.com`
 2. Проверьте что порт 80 открыт (HTTP Challenge)
 3. Проверьте логи: `docker service logs traefik_traefik | grep acme`
-4. Проверьте права на acme.json: `ls -la acme/acme.json` (должно быть 600)
+4. Проверьте что acme.json создан в volume:
+   ```bash
+   docker run --rm -v traefik-acme:/acme alpine ls -la /acme/acme.json
+   ```
 
 ### Приложение не доступно через Traefik
 
