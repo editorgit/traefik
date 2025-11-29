@@ -16,13 +16,8 @@
 ### Деплой
 
 ```bash
-# Инициализировать Docker Swarm (если еще не сделано)
-docker swarm init
-
-# Создать overlay сеть для Traefik
-docker network create --driver overlay --attachable proxy
-
-# Задеплоить Traefik (можно с локальной машины)
+git clone git@github.com:editorgit/traefik.git && cd traefik
+docker swarm init && docker network create --driver overlay --attachable proxy
 docker stack deploy -c docker-compose.yaml traefik
 ```
 
