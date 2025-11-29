@@ -26,12 +26,11 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http"
 
-      # Docker Provider
-      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      - "--providers.docker.swarmMode=true"
-      - "--providers.docker.exposedByDefault=false"
-      - "--providers.docker.network=proxy"
-      - "--providers.docker.watch=true"
+      # Swarm Provider (v3 uses separate provider for Swarm)
+      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
+      - "--providers.swarm.exposedByDefault=false"
+      - "--providers.swarm.network=proxy"
+      - "--providers.swarm.watch=true"
 
       # Logging
       - "--log.level=INFO"
